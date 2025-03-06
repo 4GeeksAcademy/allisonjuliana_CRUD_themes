@@ -1,32 +1,28 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Context } from '../store/appContext';  // Importa el contexto
-import "../../styles/theme.css";  // Aquí puedes agregar tus estilos adicionales si los necesitas
+import { useNavigate } from 'react-router-dom';
+import "../../styles/theme.css";
 import 'font-awesome/css/font-awesome.min.css';
 
 const ThemeForm = () => {
     const [theme, setTheme] = useState('');
     const [message, setMessage] = useState('');
-    const [themesList, setThemesList] = useState([]);  // Estado para almacenar los temas
-    const [editMode, setEditMode] = useState(false); // Estado para saber si estamos editando
-    const [selectedThemeId, setSelectedThemeId] = useState(null); // Para saber cuál tema estamos editando
+    const [themesList, setThemesList] = useState([]);
+    const [editMode, setEditMode] = useState(false);
+    const [selectedThemeId, setSelectedThemeId] = useState(null);
 
-    const { actions, store } = useContext(Context);
-
-    // Utiliza la variable de entorno REACT_APP_BACKEND_URL si está disponible
+    const navigate = useNavigate();
     const backendUrl = process.env.REACT_APP_BACKEND_URL || process.env.BACKEND_URL;
 
     useEffect(() => {
-        // Obtiene todos los temas cuando el componente se monta
         fetchThemes();
     }, []);
 
-    // Función para obtener todos los temas
     const fetchThemes = async () => {
         try {
             const response = await fetch(`${backendUrl}api/user`);
             const data = await response.json();
             if (response.ok) {
-                setThemesList(data.users);  // Asumiendo que el backend devuelve los temas en data.users
+                setThemesList(data.users);
             } else {
                 setMessage('Failed to load themes.');
             }
@@ -44,12 +40,11 @@ const ThemeForm = () => {
             return;
         }
 
-        // Aquí verificamos si estamos en modo edición
-        const url = editMode 
-            ? `${backendUrl}/api/user/${selectedThemeId}`  // Para PUT, usamos el ID del tema
-            : `${backendUrl}/api/user`;  // Para POST, no necesitamos ID
+        const url = editMode
+            ? `${backendUrl}/api/user/${selectedThemeId}`
+            : `${backendUrl}/api/user`;
 
-        const method = editMode ? 'PUT' : 'POST';  // Si estamos en modo editar, usamos PUT
+        const method = editMode ? 'PUT' : 'POST';
         const body = JSON.stringify({
             theme,
         });
@@ -66,38 +61,40 @@ const ThemeForm = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Limpiamos el formulario y desactivamos el modo edición
                 setTheme('');
-                setEditMode(false);  // Desactivamos el modo edición
-                setSelectedThemeId(null);  // Reseteamos el tema seleccionado
-                fetchThemes();  // Vuelve a cargar la lista de temas
+                setEditMode(false);
+                setSelectedThemeId(null);
+                fetchThemes();
             }
 
-            setMessage(data.message);
+            setMessage('Theme updated successfully.');
         } catch (error) {
             setMessage('Error creating or updating theme.');
             console.error('Error making request:', error);
         }
     };
 
-    // Función para eliminar un tema
     const handleDelete = async (themeId) => {
+        const isConfirmed = window.confirm('Are you sure you want to delete this theme?');
+
+        if (!isConfirmed) {
+            return;
+        }
+
         const url = `${backendUrl}/api/user/${themeId}`;
         try {
             const response = await fetch(url, { method: 'DELETE' });
             const data = await response.json();
-    
+
             if (response.ok) {
-                // Actualiza la lista de temas localmente después de eliminar uno
                 setThemesList((prevThemesList) => {
                     const newThemesList = prevThemesList.filter(theme => theme.id !== themeId);
-                    // Si la lista está vacía, también establece un mensaje vacío o similar
                     if (newThemesList.length === 0) {
                         setMessage("No themes available.");
                     }
                     return newThemesList;
                 });
-                setMessage(data.message || 'Theme deleted successfully.');
+                setMessage('Theme deleted successfully.');
             } else {
                 setMessage('Failed to delete theme.');
             }
@@ -107,14 +104,23 @@ const ThemeForm = () => {
         }
     };
 
-    // Función para manejar el clic en el botón "Editar"
     const handleEdit = (themeId) => {
         const themeToEdit = themesList.find((theme) => theme.id === themeId);
         if (themeToEdit) {
             setTheme(themeToEdit.theme);
-            setSelectedThemeId(themeId); // Establecemos el tema seleccionado
-            setEditMode(true); // Activamos el modo de edición
+            setSelectedThemeId(themeId);
+            setEditMode(true);
         }
+    };
+
+    const handleCancel = () => {
+        setTheme('');
+        setEditMode(false);
+        setSelectedThemeId(null);
+    };
+
+    const goToHome = () => {
+        navigate('/');
     };
 
     return (
@@ -124,20 +130,32 @@ const ThemeForm = () => {
                 <div className="col-md-7">
                     <form onSubmit={handleSubmit}>
                         <div className="mb-3">
-                            <label htmlFor="theme" className="form-label">Theme:</label>
+                            <label htmlFor="theme" className="form-label custom-label">Theme:</label>
                             <input
                                 type="text"
                                 id="theme"
-                                className="form-control"
+                                className="form-control custom-input"
                                 value={theme}
                                 onChange={(e) => setTheme(e.target.value)}
                                 required
                                 style={{ fontSize: '24px' }}
                             />
                         </div>
-                        <button type="submit" className="btn btn-success w-100">
+                        <button
+                            type="submit"
+                            className="btn btn-success w-100"
+                        >
                             {editMode ? 'Save Changes' : 'Create Theme'}
                         </button>
+                        {editMode && (
+                            <button
+                                type="button"
+                                className="btn btn-danger w-100 mt-2"
+                                onClick={handleCancel}
+                            >
+                                Cancel changes
+                            </button>
+                        )}
                     </form>
                 </div>
             </div>
@@ -175,6 +193,13 @@ const ThemeForm = () => {
                         <p className="mt-3 text-center text-dark">No themes available.</p>
                     )}
                 </ul>
+                <button
+                    type="button"
+                    className="btn btn-primary w-100 mt-2"
+                    onClick={goToHome}
+                >
+                    Go to Home
+                </button>
             </div>
         </div>
     );

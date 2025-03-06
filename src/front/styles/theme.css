@@ -37,3 +37,11 @@ footer {
 .theme-text {
     font-size: 22px;
 }
+
+.custom-label {
+    font-size: 22px;
+}
+
+.custom-input {
+    font-size: 24px;
+}
